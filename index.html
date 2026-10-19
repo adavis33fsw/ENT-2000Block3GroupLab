@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>90-Minute Bot Sprint | Venture AI Interactive Lab Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- PDF generation library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- DOCX import reader (extracts text from uploaded .docx files) -->
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+  <!-- PDF import reader (extracts text from uploaded .pdf files) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+    });
+  </script>
+
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 26, 44, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --cyan: #06b6d4;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-sub: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text);
+      line-height: 1.6;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; }
+
+    header {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px 32px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(135deg, #fff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge-fsw {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2));
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .hud-stats { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+    .timer-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--amber);
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+    }
+
+    .timer-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #fff;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: sans-serif;
+      transition: all 0.2s;
+    }
+    .timer-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+    .save-cluster {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--card-border);
+      padding: 8px 10px;
+      border-radius: 12px;
+      flex-wrap: wrap;
+    }
+
+    #save-status {
+      font-size: 11px;
+      color: var(--emerald);
+      opacity: 0;
+      transition: opacity 0.4s;
+      margin-left: 4px;
+      white-space: nowrap;
+    }
+
+    .resume-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(99, 102, 241, 0.1));
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 16px;
+      padding: 16px 22px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .resume-banner p { font-size: 13px; color: #fde68a; }
+
+    .nav-tabs { display: flex; gap: 10px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 6px; }
+
+    .tab-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 12px 20px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); border-color: rgba(99, 102, 241, 0.4); transform: translateY(-1px); }
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(6, 182, 212, 0.15));
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 8px 24px var(--accent-glow);
+    }
+    .tab-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--text-sub); }
+    .tab-btn.active .tab-indicator { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+
+    .workspace-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+    @media (max-width: 1024px) { .workspace-grid { grid-template-columns: 1fr; } }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.35s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--card-border);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .card-title { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: #fff; }
+
+    .form-group { margin-bottom: 20px; }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      background: rgba(10, 15, 29, 0.7);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    input[type="file"] {
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    textarea { min-height: 90px; resize: vertical; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .decision-block {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+    .decision-block:hover { border-color: rgba(99, 102, 241, 0.3); }
+
+    .decision-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    .decision-title { font-weight: 700; font-size: 15px; color: #e2e8f0; }
+
+    .requirement-banner {
+      background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(6,182,212,0.08));
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+    }
+    .requirement-banner .req-title {
+      font-weight: 800;
+      font-size: 15px;
+      color: #fff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .requirement-banner p { font-size: 13px; color: #c7d2fe; margin-bottom: 12px; }
+
+    .consultant-panel {
+      position: sticky;
+      top: 24px;
+      background: linear-gradient(180deg, rgba(23, 32, 54, 0.95), rgba(15, 23, 42, 0.95));
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .coach-avatar {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--cyan));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 12px;
+      box-shadow: 0 8px 16px var(--accent-glow);
+    }
+
+    .coach-header { margin-bottom: 16px; }
+    .coach-name { font-size: 16px; font-weight: 700; color: #fff; }
+    .coach-subtitle { font-size: 12px; color: var(--cyan); font-weight: 600; }
+
+    .coach-tip-box {
+      background: rgba(10, 15, 29, 0.8);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      padding: 14px;
+      font-size: 13px;
+      color: #cbd5e1;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .coach-tip-box strong { color: #fff; display: block; margin-bottom: 4px; }
+
+    .textbook-quote {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px dashed rgba(16, 185, 129, 0.3);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 12px;
+      color: #a7f3d0;
+      margin-bottom: 14px;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, var(--accent), #4f46e5);
+      border: none; color: #fff; padding: 10px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: all 0.2s; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      text-decoration: none; margin-right: 8px; margin-bottom: 8px;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45); }
+    .btn-secondary { background: rgba(255, 255, 255, 0.08); box-shadow: none; border: 1px solid var(--card-border); }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.15); box-shadow: none; }
+    .btn-emerald { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+    .btn-emerald:hover { box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45); }
+    .btn-amber { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
+    .btn-small { padding: 6px 12px; font-size: 12px; }
+
+    .slide-deck-preview { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
+
+    .slide-item {
+      background: rgba(10, 15, 29, 0.9);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .slide-item:hover { border-color: var(--cyan); transform: translateY(-3px); }
+
+    .slide-num {
+      position: absolute; top: 14px; right: 14px;
+      background: rgba(99, 102, 241, 0.2); color: #a5b4fc;
+      border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .slide-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 10px; padding-right: 40px; }
+    .slide-speaker-input { margin-bottom: 10px; font-size: 13px; padding: 8px 12px; }
+
+    canvas { display: none; }
+
+    .pitch-mode-box {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1));
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 18px; padding: 24px; text-align: center; margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <div class="brand-title">
+        <span>⚡ 90-MINUTE BOT SPRINT SIMULATOR</span>
+        <span class="badge-fsw">ENTREPRENEURSHIP LAB</span>
+      </div>
+      <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+        Daveler Innovation Center | Individual Workbook for a Team-Built Bot Venture
+      </p>
+    </div>
+
+    <div class="hud-stats">
+      <div class="timer-badge">
+        <span id="timer-display">90:00</span>
+        <button class="timer-btn" onclick="toggleTimer()">⏯ Start/Pause</button>
+        <button class="timer-btn" onclick="resetTimer()">↺ Reset</button>
+      </div>
+
+      <div class="save-cluster">
+        <button class="btn btn-secondary btn-small" onclick="saveProgressToBrowser()">💾 Save Progress</button>
+        <button class="btn btn-secondary btn-small" onclick="downloadProgressSnapshotPdf()">📄 Progress Snapshot (PDF)</button>
+        <span id="save-status"></span>
+      </div>
+
+      <button class="btn btn-emerald" onclick="generateMySubmissionPdf()">
+        📄 Download My Completed Simulation (PDF)
+      </button>
+    </div>
+  </header>
+
+  <div class="resume-banner" id="resume-banner">
+    <p>💡 We found progress saved on this computer from earlier in your session. Want to pick up where you left off?</p>
+    <div>
+      <button class="btn btn-emerald btn-small" onclick="resumeFromBrowser()">Resume Progress</button>
+      <button class="btn btn-secondary btn-small" onclick="dismissResumeBanner()">Start Fresh</button>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('phase1')">
+      <span class="tab-indicator"></span> Phase 1: New Venture & Research
+    </button>
+    <button class="tab-btn" onclick="switchTab('phase2')">
+      <span class="tab-indicator"></span> Phase 2: Bot Build & Knowledge Bank
+    </button>
+    <button class="tab-btn" onclick="switchTab('phase3')">
+      <span class="tab-indicator"></span> Phase 3: Alpha Testing & UX
+    </button>
+    <button class="tab-btn" onclick="switchTab('phase4')">
+      <span class="tab-indicator"></span> Phase 4: Artifact & Image Studio
+    </button>
+    <button class="tab-btn" onclick="switchTab('phase5')">
+      <span class="tab-indicator"></span> Phase 5: Pitch Deck & My Submission
+    </button>
+  </div>
+
+  <div class="workspace-grid">
+    <main>
+      <!-- TAB 1: New Venture & Research -->
+      <section id="phase1" class="tab-content active">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">👤 Your Role on the Team</h2>
+            <span class="badge-fsw">Minutes 1–20</span>
+          </div>
+
+          <div class="requirement-banner">
+            <div class="req-title">📌 Working Independently, Building Together</div>
+            <p>
+              Your team is designing <strong>one shared bot business idea</strong> together — but each of you completes
+              this simulation on your own computer. Talk through every decision out loud with your group, then record
+              your own understanding of the plan in your own copy. At the end of the sprint, you will each download and
+              submit your own completed PDF as your individual contribution to this group assignment.
+            </p>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Your Name</label>
+              <input type="text" id="student-name" placeholder="Enter your full name">
+            </div>
+            <div class="form-group">
+              <label>Your Role on This Team Today</label>
+              <select id="student-role" onchange="updateReflectionLabel()">
+                <option value="Bot Architect">Bot Architect — builds/refines the bot in BoodleBox</option>
+                <option value="Research Lead">Research Lead — market research & competitive analysis</option>
+                <option value="Presentation Designer">Presentation Designer — slide creation & visual design</option>
+                <option value="Pitch Captain">Pitch Captain — pitch narrative & speaking roles</option>
+                <option value="Multiple Roles">Multiple Roles (small team)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Your Teammates (for your reference & your report only)</label>
+            <input type="text" id="teammates-reference" placeholder="e.g., Jordan Lee, Sam Taylor, Morgan Chen">
+          </div>
+
+          <div class="requirement-banner" style="margin-top: 4px;">
+            <div class="req-title">🚀 Lab Requirement: You Are Building a Brand-New Bot</div>
+            <p>
+              Your team will NOT refine an existing bot from a prior assignment. As a group, decide on an entirely new
+              AI bot built from a shared business case you develop together, right now, from scratch.
+            </p>
+            <label>Your Team's New Business Idea (one sentence — same for every teammate's copy)</label>
+            <input type="text" id="new-business-idea" placeholder="e.g., A bot that helps first-gen college students understand their financial aid letters">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">🔍 Market Intelligence & Value Mapping</h2>
+            <span class="badge-fsw">Vibe Board Framework</span>
+          </div>
+
+          <div class="decision-block">
+            <div class="decision-header">
+              <span class="decision-title">Course Concept Decision: Target User Need Discovery</span>
+              <select style="width: auto;" id="concept-discovery" onchange="updateConsultant('concept1')">
+                <option value="jtbd">Jobs-To-Be-Done (Functional, Emotional, Social Jobs)</option>
+                <option value="empathy">Empathy Map (Says, Thinks, Does, Feels)</option>
+                <option value="both" selected>Triangulated Approach (JTBD + Empathy Mapping)</option>
+              </select>
+            </div>
+            <label>Justification & User Insight</label>
+            <textarea id="reasoning-discovery" placeholder="Explain how this framework helped your team uncover what your user is really hiring this bot to do (functional, emotional, and/or social job)..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Rapid Market Research Findings (via @Perplexity / @Semantic Scholar)</label>
+            <textarea id="research-findings" placeholder="Does a similar tool already exist? What does it do well, where does it fall short? What's the market size? What are users doing today without your bot? Cite specific findings..."></textarea>
+          </div>
+
+          <div class="decision-block">
+            <div class="decision-header">
+              <span class="decision-title">Build Your Persona's Empathy Map</span>
+              <span style="font-size: 11px; color: var(--text-sub);">Feeds your Phase 4 Artifact</span>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Persona Name</label>
+                <input type="text" id="persona-name" placeholder="e.g., Overwhelmed Olivia">
+              </div>
+              <div class="form-group">
+                <label>Says</label>
+                <input type="text" id="persona-says" placeholder="A direct quote from your user">
+              </div>
+              <div class="form-group">
+                <label>Thinks</label>
+                <input type="text" id="persona-thinks" placeholder="An internal worry or question">
+              </div>
+              <div class="form-group">
+                <label>Does</label>
+                <input type="text" id="persona-does" placeholder="An observable behavior">
+              </div>
+              <div class="form-group">
+                <label>Feels</label>
+                <input type="text" id="persona-feels" placeholder="An emotion they experience">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Bot Build & Knowledge Bank -->
+      <section id="phase2" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">🤖 Bot Prompt Engineering & System Design</h2>
+            <span class="badge-fsw">Minutes 20–60</span>
+          </div>
+
+          <div class="form-group">
+            <label>Bot Name & Value Intention</label>
+            <input type="text" id="bot-name" placeholder="e.g., FinAid Navigator">
+          </div>
+
+          <div class="decision-block">
+            <div class="decision-header">
+              <span class="decision-title">AI System Prompting Persona & Tone</span>
+              <select style="width: auto;" id="bot-tone" onchange="updateConsultant('tone')">
+                <option value="friendly">Supportive & Empathetic Companion</option>
+                <option value="concise">Concise & Action-Oriented Guide</option>
+                <option value="authoritative">Authoritative Subject-Matter Specialist</option>
+              </select>
+            </div>
+            <label>Custom System Prompt (write/refine with @PromptBot in BoodleBox)</label>
+            <textarea id="system-prompt" style="min-height: 120px;" placeholder="Write the complete system prompt for your new bot: who it is, what it does, how it should sound, and what it should never do..."></textarea>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label>Pipeline Stage 1 (Input)</label>
+              <input type="text" id="pipeline-stage1" placeholder="e.g., User Question">
+            </div>
+            <div class="form-group">
+              <label>Pipeline Stage 2 (Processing)</label>
+              <input type="text" id="pipeline-stage2" placeholder="e.g., Knowledge Bank Lookup">
+            </div>
+            <div class="form-group">
+              <label>Pipeline Stage 3 (Output)</label>
+              <input type="text" id="pipeline-stage3" placeholder="e.g., Personalized Answer">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">🧠 Build Your Own Knowledge Bank</h2>
+            <span class="badge-fsw">Required Before Testing</span>
+          </div>
+
+          <div class="coach-tip-box" style="margin-bottom: 20px;">
+            <strong>Why this matters:</strong>
+            A bot with no knowledge base — or a generic one copied from the internet — will fail basic tasks. Your documents
+            must contain the real facts, policies, and Q&A specific to YOUR business idea so the bot doesn't hallucinate.
+          </div>
+
+          <div id="knowledge-doc-list">
+            <div class="decision-block knowledge-doc-block">
+              <div class="decision-header">
+                <span class="decision-title">Knowledge Document #1</span>
+              </div>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label>Document Title</label>
+                  <input type="text" class="kb-title" placeholder="e.g., Pricing & Refund Policy">
+                </div>
+                <div class="form-group">
+                  <label>Document Type</label>
+                  <select class="kb-type">
+                    <option>FAQ / Common Questions</option>
+                    <option>Policy or Process Guide</option>
+                    <option>Product or Service Specifications</option>
+                    <option>Glossary of Terms</option>
+                    <option>Sample Conversation / Q&A Pairs</option>
+                    <option>Other Reference Data</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Import From Existing File (optional)</label>
+                <input type="file" class="kb-import-file" accept=".docx,.pdf" onchange="importKnowledgeDoc(this)">
+                <p style="font-size:11px;color:var(--text-sub);margin-top:4px;">Upload a .docx or .pdf and we'll pull the text into the box below — or just type/paste directly.</p>
+              </div>
+              <div class="form-group">
+                <label>Document Content (the real information the bot will learn from)</label>
+                <textarea class="kb-content" style="min-height: 110px;" placeholder="Write the actual facts, numbers, policies, or sample Q&A pairs your bot needs to answer correctly..."></textarea>
+              </div>
+              <div class="form-group">
+                <label>Why does your bot need this specific document?</label>
+                <textarea class="kb-reason" placeholder="What gap does this fill? What would the bot get wrong or be unable to answer without it?"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-secondary" onclick="addKnowledgeDoc()">+ Add Another Knowledge Document</button>
+          <br>
+          <button class="btn btn-emerald" onclick="exportKnowledgeBankPdf()">📄 Export Knowledge Bank (PDF)</button>
+          <button class="btn btn-amber" onclick="exportKnowledgeBankWord()">📝 Export Knowledge Bank (DOCX)</button>
+
+          <p style="font-size: 12px; color: var(--text-sub); margin-top: 10px;">
+            Tip: think about the different scenarios your bot must handle — you likely need more than one document to
+            cover each use case. Upload the exported file into your BoodleBox custom bot's Knowledge Bank.
+          </p>
+        </div>
+      </section>
+
+      <!-- TAB 3: Alpha Testing & UX Refinement -->
+      <section id="phase3" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">🧪 Comprehensive Alpha Testing Plan</h2>
+            <span class="badge-fsw">BLO 3.2 Aligned</span>
+          </div>
+
+          <div class="decision-block">
+            <div class="decision-header">
+              <span class="decision-title">Alpha Testing Methodology Decision</span>
+              <select style="width: auto;" id="alpha-method" onchange="updateConsultant('alpha')">
+                <option value="dogfooding">Internal Team Dogfooding (Core Team Real Routine)</option>
+                <option value="closed_alpha">Closed Alpha with Trusted Testers</option>
+                <option value="hybrid" selected>Hybrid: Usability Think-Aloud Sessions + Log Analytics</option>
+              </select>
+            </div>
+            <label>Test Scenarios & Risk Mitigation (test at least 3 different prompts)</label>
+            <textarea id="alpha-strategy" placeholder="Write at least 3 distinct test scenarios that cover different features/use cases, plus how you'll triage issues (P1 critical fix vs. improvement vs. defer for later)..."></textarea>
+          </div>
+
+          <div class="decision-block">
+            <div class="decision-header">
+              <span class="decision-title">Don Norman UX 3-Level Design Integration</span>
+              <select style="width: auto;" id="ux-level-focus" onchange="updateConsultant('ux')">
+                <option value="visceral">Visceral Focus: Instant Visual Appeal</option>
+                <option value="behavioral">Behavioral Focus: Rapid Response, Zero Friction, High Usability</option>
+                <option value="reflective">Reflective Focus: Fostering Confidence & Identity</option>
+                <option value="holistic" selected>Holistic: Harmonizing Visceral, Behavioral, and Reflective</option>
+              </select>
+            </div>
+            <label>UX Implementation Notes</label>
+            <textarea id="ux-implementation" placeholder="Explain how visceral, behavioral, and reflective design elements are built into your bot..."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: Artifact & Image Generator Studio -->
+      <section id="phase4" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">🎨 AI Artifact Studio & Graphic Generator</h2>
+            <span class="badge-fsw">Download PNG / JPG Artifacts</span>
+          </div>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+            The rubric requires at least one AI-enhanced visual element in your 6-slide deck. These generators pull directly
+            from what you entered in Phase 1 and Phase 2 — fill those in first for a personalized artifact.
+          </p>
+
+          <div class="grid-3">
+            <div class="decision-block" style="text-align: center;">
+              <div class="decision-title" style="margin-bottom: 8px;">🚀 Bot Logo / Brand Identity</div>
+              <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Visceral emblem for Slide 1</p>
+              <button class="btn" style="width: 100%; justify-content: center;" onclick="generateAndDownloadImage('logo', 'png')">
+                🎨 Download Logo (.PNG)
+              </button>
+            </div>
+
+            <div class="decision-block" style="text-align: center;">
+              <div class="decision-title" style="margin-bottom: 8px;">🗺️ Empathy & JTBD Map</div>
+              <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">User journey visual for Slide 2/4</p>
+              <button class="btn btn-secondary" style="width: 100%; justify-content: center;" onclick="generateAndDownloadImage('empathy', 'jpg')">
+                📊 Download Map (.JPG)
+              </button>
+            </div>
+
+            <div class="decision-block" style="text-align: center;">
+              <div class="decision-title" style="margin-bottom: 8px;">⚙️ Bot Logic & Alpha Flow</div>
+              <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">System blueprint for Slide 3/5</p>
+              <button class="btn btn-emerald" style="width: 100%; justify-content: center;" onclick="generateAndDownloadImage('architecture', 'png')">
+                ⚡ Download Diagram (.PNG)
+              </button>
+            </div>
+          </div>
+          <canvas id="artifact-canvas" width="800" height="500"></canvas>
+        </div>
+      </section>
+
+      <!-- TAB 5: Pitch Deck & My Submission -->
+      <section id="phase5" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">📊 6-Slide Flash Pitch Deck Builder</h2>
+            <span class="badge-fsw">5-Minute Presentation Ready</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+            Record your team's actual slide content below. Every team member must present at least one slide — note who
+            is speaking on each so your submission reflects the real pitch plan.
+          </p>
+
+          <div class="slide-deck-preview">
+            <div class="slide-item">
+              <span class="slide-num">Slide 1</span>
+              <input type="text" class="slide-speaker-input" placeholder="Assigned speaker name">
+              <div class="slide-title">Bot Name & Initial Intention</div>
+              <textarea class="slide-content" placeholder="What is the bot called? What was the original vision? Describe your logo/visual concept."></textarea>
+            </div>
+
+            <div class="slide-item">
+              <span class="slide-num">Slide 2</span>
+              <input type="text" class="slide-speaker-input" placeholder="Assigned speaker name">
+              <div class="slide-title">The Business Case (The Problem)</div>
+              <textarea class="slide-content" placeholder="What specific problem does this bot address? Quantify it with research data. Include a brief user persona."></textarea>
+            </div>
+
+            <div class="slide-item">
+              <span class="slide-num">Slide 3</span>
+              <input type="text" class="slide-speaker-input" placeholder="Assigned speaker name">
+              <div class="slide-title">The Value Proposition (The Solution)</div>
+              <textarea class="slide-content" placeholder="How does the bot solve the problem? Be specific about features. Reference the behavioral level of UX."></textarea>
+            </div>
+
+            <div class="slide-item">
+              <span class="slide-num">Slide 4</span>
+              <input type="text" class="slide-speaker-input" placeholder="Assigned speaker name">
+              <div class="slide-title">Target Audience (Who Finds Value?)</div>
+              <textarea class="slide-content" placeholder="Primary & secondary user groups. Functional job? Emotional job? Social job? (JTBD)"></textarea>
+            </div>
+
+            <div class="slide-item">
+              <span class="slide-num">Slide 5</span>
+              <input type="text" class="slide-speaker-input" placeholder="Assigned speaker name">
+              <div class="slide-title">Deployment Strategy (How Do They Get It?)</div>
+              <textarea class="slide-content" placeholder="Distribution plan — BoodleBox sharing, website, integration? What's your go-to-market approach?"></textarea>
+            </div>
+
+            <div class="slide-item">
+              <span class="slide-num">Slide 6</span>
+              <input type="text" class="slide-speaker-input" placeholder="Assigned speaker name">
+              <div class="slide-title">The "Wow" Factor (UX & Delight)</div>
+              <textarea class="slide-content" placeholder="What's the visceral reaction you want? What reflective value does it create? End with a bold claim or compelling statistic."></textarea>
+            </div>
+          </div>
+
+          <div class="pitch-mode-box">
+            <h3 style="color: #fff; margin-bottom: 8px;">🎤 Ready for your 5-Minute Flash Pitch?</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+              Maximum allowed is 5 minutes 30 seconds before disqualification. Ensure each speaker has clear transitions.
+            </p>
+            <button class="btn btn-emerald" onclick="startPresentationMode()">
+              🚀 Launch Presentation Run-Through
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">📝 My Individual Contribution & Reflection</h2>
+            <span class="badge-fsw">Required in Your PDF</span>
+          </div>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+            This is the part only you write. It gets included in your personal PDF so your instructor can see your
+            specific contribution and what you personally learned — separate from your teammates' submissions.
+          </p>
+
+          <div class="form-group">
+            <label>My Reflection (as <span id="reflection-role-label">Bot Architect</span>)</label>
+            <textarea id="my-reflection" style="min-height: 130px;" placeholder="What did you personally build, research, design, or coordinate during this sprint? What did you learn about bot design, UX, or pitching a business idea?"></textarea>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">📥 Final Submission</h2>
+            <span class="badge-fsw">Submit This PDF Individually</span>
+          </div>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+            When you're done, download your completed simulation below and submit <strong>this PDF</strong> as your
+            individual contribution to the group assignment. Each team member submits their own file — even though you
+            worked on the same venture, this document is proof of your personal work.
+          </p>
+          <button class="btn btn-emerald" style="width:100%; justify-content:center; padding: 16px;" onclick="generateMySubmissionPdf()">
+            📄 Download My Completed Simulation (PDF)
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <aside>
+      <div class="consultant-panel">
+        <div class="coach-avatar">💡</div>
+        <div class="coach-header">
+          <div class="coach-name">Dr. Sprint Consultant</div>
+          <div class="coach-subtitle">AI & Entrepreneurship Coach</div>
+        </div>
+
+        <div id="coach-tip" class="coach-tip-box">
+          <strong>Strategic Tip:</strong>
+          Agree on your one-sentence business idea as a group fast, then record it in your own copy. Use "💾 Save Progress"
+          often — your work is stored on this computer so you won't lose it if the browser refreshes.
+        </div>
+
+        <div id="coach-textbook" class="textbook-quote">
+          📖 <em>"In entrepreneurship, desirability is all about how much people want your product... UX design creates a bridge between functional value and emotional needs."</em>
+        </div>
+
+        <div style="margin-top: 18px;">
+          <label style="color: #fff; font-size: 12px;">Active Rubric Checklist</label>
+          <div style="font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+            <div>✅ <strong>Business Case (25 pts):</strong> New idea, JTBD & data cited</div>
+            <div>✅ <strong>Bot Design (25 pts):</strong> Prompt & original knowledge bank loaded</div>
+            <div>✅ <strong>Pitch Quality (25 pts):</strong> 6 slides, all speak</div>
+            <div>✅ <strong>Time & Team (25 pts):</strong> Completed in 90 min, each member submits their own PDF</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // TAB MANAGEMENT
+  // ============================================================
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    const indexMap = { 'phase1': 0, 'phase2': 1, 'phase3': 2, 'phase4': 3, 'phase5': 4 };
+    document.querySelectorAll('.tab-btn')[indexMap[tabId]].classList.add('active');
+    updateConsultantByTab(tabId);
+  }
+
+  // ============================================================
+  // TIMER
+  // ============================================================
+  let timeInSeconds = 90 * 60;
+  let timerInterval = null;
+  let isTimerRunning = false;
+
+  function updateTimerDisplay() {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = timeInSeconds % 60;
+    document.getElementById('timer-display').innerText =
+      `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  function toggleTimer() {
+    if (isTimerRunning) {
+      clearInterval(timerInterval);
+      isTimerRunning = false;
+    } else {
+      isTimerRunning = true;
+      timerInterval = setInterval(() => {
+        if (timeInSeconds > 0) {
+          timeInSeconds--;
+          updateTimerDisplay();
+        } else {
+          clearInterval(timerInterval);
+          alert("⏱ Time is up! Move immediately to Phase 5: Rehearse & Flash Pitch!");
+        }
+      }, 1000);
+    }
+  }
+
+  function resetTimer() {
+    clearInterval(timerInterval);
+    isTimerRunning = false;
+    timeInSeconds = 90 * 60;
+    updateTimerDisplay();
+  }
+
+  // ============================================================
+  // CONSULTANT COACHING
+  // ============================================================
+  const consultantTips = {
+    phase1: {
+      tip: "<strong>Phase 1 Strategy:</strong> Don't just describe what the bot does — identify the customer's *Job-To-Be-Done*. What emotional relief or status boost does a brand-new bot like this provide?",
+      quote: "📖 <em>'JTBD reminds you to look beyond what customers say they want to understand what they are truly hiring your product to do.'</em>"
+    },
+    phase2: {
+      tip: "<strong>Phase 2 — Build Your Own Knowledge Bank:</strong> A generic or missing knowledge base is a critical rubric failure. Write specific, original content and export it as a PDF or DOCX to upload into BoodleBox.",
+      quote: "📖 <em>'Bot fails to perform its intended task reliably... no knowledge base uploaded; significant usability issues.'</em>"
+    },
+    phase3: {
+      tip: "<strong>Phase 3 Alpha & UX:</strong> Structure your test with Don Norman's 3 levels: Visceral (looks great), Behavioral (works smoothly), Reflective (creates positive identity).",
+      quote: "📖 <em>'Skipping alpha testing is like skipping a dress rehearsal — it raises the chances of a flop on opening night.'</em>"
+    },
+    phase4: {
+      tip: "<strong>Phase 4 Artifacts:</strong> Fill in your bot name, persona, and pipeline stages in Phases 1–2 first — these artifacts are generated from your own content, not a template.",
+      quote: "📖 <em>'At least one AI-generated visual element is required in your deck for full rubric credit.'</em>"
+    },
+    phase5: {
+      tip: "<strong>Phase 5 Pitch & Submission:</strong> Keep strictly under 5 minutes. Then download your own PDF and submit it — your teammates will each submit theirs separately from their own computers.",
+      quote: "📖 <em>'The groups that succeed move beyond \"our bot does X\" to \"our bot makes [person] feel [way]\".'</em>"
+    }
+  };
+
+  function updateConsultantByTab(tabId) {
+    if (consultantTips[tabId]) {
+      document.getElementById('coach-tip').innerHTML = consultantTips[tabId].tip;
+      document.getElementById('coach-textbook').innerHTML = consultantTips[tabId].quote;
+    }
+  }
+
+  function updateConsultant(action) {
+    const tipEl = document.getElementById('coach-tip');
+    const quoteEl = document.getElementById('coach-textbook');
+
+    if (action === 'concept1') {
+      const val = document.getElementById('concept-discovery').value;
+      if (val === 'jtbd') {
+        tipEl.innerHTML = "<strong>Consultant Note:</strong> Focus on Christensen's JTBD: What functional, emotional, and social job is being solved?";
+        quoteEl.innerHTML = "📖 <em>'Customers hire a product to get a job done. Differentiate between features and root motivations.'</em>";
+      } else if (val === 'empathy') {
+        tipEl.innerHTML = "<strong>Consultant Note:</strong> Empathy mapping maps Says, Thinks, Does, and Feels. Ensure you capture the user's hidden anxieties!";
+      } else {
+        tipEl.innerHTML = "<strong>Consultant Note:</strong> Triangulation is the gold standard! Combining JTBD with Empathy maps yields undeniable business cases.";
+      }
+    } else if (action === 'alpha') {
+      tipEl.innerHTML = "<strong>Consultant Note on Alpha:</strong> Cover multiple distinct scenarios so you catch issues unique to each situation.";
+      quoteEl.innerHTML = "📖 <em>'Each scenario ensures coverage of various feature combinations and user flows.'</em>";
+    } else if (action === 'knowledge') {
+      tipEl.innerHTML = "<strong>Consultant Note on Knowledge:</strong> Every document should map to a real scenario your bot must handle. If a document doesn't help the bot answer a real user question, ask whether you actually need it.";
+      quoteEl.innerHTML = "📖 <em>'Beware of feature creep — maintain a roadmap and decide which additions align with your strategy.'</em>";
+    }
+  }
+
+  function updateReflectionLabel() {
+    const role = document.getElementById('student-role').value || 'Team Member';
+    document.getElementById('reflection-role-label').innerText = role;
+  }
+
+  // ============================================================
+  // HTML ESCAPE HELPERS
+  // ============================================================
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.innerText = (str === undefined || str === null) ? '' : str;
+    return div.innerHTML;
+  }
+
+  function escapeAttr(str) {
+    return ((str === undefined || str === null) ? '' : str)
+      .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ============================================================
+  // KNOWLEDGE BANK BUILDER
+  // ============================================================
+  let kbDocCounter = 1;
+
+  function addKnowledgeDoc(prefill) {
+    kbDocCounter++;
+    const list = document.getElementById('knowledge-doc-list');
+    const div = document.createElement('div');
+    div.className = 'decision-block knowledge-doc-block';
+    const title = prefill && prefill.title ? prefill.title : '';
+    const type = prefill && prefill.type ? prefill.type : 'FAQ / Common Questions';
+    const content = prefill && prefill.content ? prefill.content : '';
+    const reason = prefill && prefill.reason ? prefill.reason : '';
+    const types = ['FAQ / Common Questions', 'Policy or Process Guide', 'Product or Service Specifications', 'Glossary of Terms', 'Sample Conversation / Q&A Pairs', 'Other Reference Data'];
+    let optionsHtml = '';
+    types.forEach(t => {
+      optionsHtml += `<option ${t === type ? 'selected' : ''}>${t}</option>`;
+    });
+
+    div.innerHTML = `
+      <div class="decision-header">
+        <span class="decision-title">Knowledge Document #${kbDocCounter}</span>
+        <button class="timer-btn" onclick="removeKnowledgeDoc(this)">✕ Remove</button>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Document Title</label>
+          <input type="text" class="kb-title" placeholder="e.g., Eligibility Requirements" value="${escapeAttr(title)}">
+        </div>
+        <div class="form-group">
+          <label>Document Type</label>
+          <select class="kb-type">${optionsHtml}</select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Import From Existing File (optional)</label>
+        <input type="file" class="kb-import-file" accept=".docx,.pdf" onchange="importKnowledgeDoc(this)">
+        <p style="font-size:11px;color:var(--text-sub);margin-top:4px;">Upload a .docx or .pdf and we'll pull the text into the box below.</p>
+      </div>
+      <div class="form-group">
+        <label>Document Content (the real information the bot will learn from)</label>
+        <textarea class="kb-content" style="min-height: 110px;" placeholder="Write the actual facts, numbers, policies, or sample Q&A pairs your bot needs to answer correctly...">${escapeHtml(content)}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Why does your bot need this specific document?</label>
+        <textarea class="kb-reason" placeholder="What gap does this fill? What would the bot get wrong or be unable to answer without it?">${escapeHtml(reason)}</textarea>
+      </div>
+    `;
+    list.appendChild(div);
+    updateConsultant('knowledge');
+    return div;
+  }
+
+  function removeKnowledgeDoc(btn) {
+    const blocks = document.querySelectorAll('.knowledge-doc-block');
+    if (blocks.length <= 1) {
+      alert('Your bot needs at least one knowledge document — it cannot run on an empty knowledge bank.');
+      return;
+    }
+    btn.closest('.knowledge-doc-block').remove();
+  }
+
+  function collectKnowledgeDocs() {
+    const blocks = document.querySelectorAll('.knowledge-doc-block');
+    const docs = [];
+    blocks.forEach((block, i) => {
+      docs.push({
+        title: block.querySelector('.kb-title').value || `Untitled Document ${i + 1}`,
+        type: block.querySelector('.kb-type').value,
+        content: block.querySelector('.kb-content').value || '[No content written yet]',
+        reason: block.querySelector('.kb-reason').value || '[No justification written yet]'
+      });
+    });
+    return docs;
+  }
+
+  // ---- Import DOCX/PDF into a knowledge document box ----
+  function importKnowledgeDoc(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const block = input.closest('.knowledge-doc-block');
+    const textarea = block.querySelector('.kb-content');
+    const titleInput = block.querySelector('.kb-title');
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    if (textarea.value.trim() && !confirm('This will replace the current content in this document box with text extracted from "' + file.name + '". Continue?')) {
+      input.value = '';
+      return;
+    }
+
+    if (!titleInput.value.trim()) {
+      titleInput.value = file.name.replace(/\.(docx|pdf)$/i, '');
+    }
+
+    const reader = new FileReader();
+
+    if (ext === 'docx') {
+      reader.onload = function (e) {
+        if (typeof mammoth === 'undefined') {
+          alert('The document reader library did not load (check your internet connection). Please open the file yourself and paste the text in instead.');
+          return;
+        }
+        mammoth.extractRawText({ arrayBuffer: e.target.result })
+          .then(function (result) { textarea.value = result.value; })
+          .catch(function () { alert('Could not read this .docx file. Please paste the content manually.'); });
+      };
+      reader.readAsArrayBuffer(file);
+    } else if (ext === 'pdf') {
+      reader.onload = function (e) {
+        if (typeof pdfjsLib === 'undefined') {
+          alert('The PDF reader library did not load (check your internet connection). Please open the file yourself and paste the text in instead.');
+          return;
+        }
+        const typedarray = new Uint8Array(e.target.result);
+        pdfjsLib.getDocument({ data: typedarray }).promise.then(function (pdf) {
+          const pagePromises = [];
+          for (let i = 1; i <= pdf.numPages; i++) {
+            pagePromises.push(
+              pdf.getPage(i).then(page => page.getTextContent()).then(tc => tc.items.map(it => it.str).join(' '))
+            );
+          }
+          Promise.all(pagePromises).then(pages => { textarea.value = pages.join('\n\n'); });
+        }).catch(function () { alert('Could not read this PDF file. Please paste the content manually.'); });
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      alert('Please upload a .docx or .pdf file.');
+    }
+    input.value = '';
+  }
+
+  // ---- Export Knowledge Bank as Word (.doc) — no external dependency, always works ----
+  function downloadAsWordDoc(filename, innerHtml) {
+    const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export</title></head><body>";
+    const postHtml = "</body></html>";
+    const fullHtml = preHtml + innerHtml + postHtml;
+    const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportKnowledgeBankWord() {
+    const botName = document.getElementById('bot-name').value || 'Your_Bot';
+    const docs = collectKnowledgeDocs();
+    let html = `<h1>Custom Knowledge Bank for ${escapeHtml(botName)}</h1>`;
+    html += `<p>Built by the team — ready to upload into BoodleBox Knowledge Bank.</p><hr/>`;
+    docs.forEach((doc, i) => {
+      html += `<h2>Document ${i + 1}: ${escapeHtml(doc.title)}</h2>`;
+      html += `<p><strong>Type:</strong> ${escapeHtml(doc.type)}</p>`;
+      html += `<p><strong>Content:</strong><br/>${escapeHtml(doc.content).replace(/\n/g, '<br/>')}</p>`;
+      html += `<p><strong>Why This Document Is Needed:</strong><br/>${escapeHtml(doc.reason).replace(/\n/g, '<br/>')}</p><hr/>`;
+    });
+    downloadAsWordDoc(`${botName.replace(/\s+/g, '_')}_Knowledge_Bank.doc`, html);
+  }
+
+  // ---- Export Knowledge Bank as PDF ----
+  function createPdfWriter() {
+    if (typeof window.jspdf === 'undefined') {
+      alert('The PDF library did not load — check your internet connection and try again.');
+      return null;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    let y = 50;
+    const margin = 50;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const maxWidth = pageWidth - margin * 2;
+    const lineHeight = 16;
+
+    function addText(text, size, bold, spacingAfter) {
+      doc.setFontSize(size);
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      const safeText = (text && text.toString().trim()) ? text.toString() : '(not yet completed)';
+      const lines = doc.splitTextToSize(safeText, maxWidth);
+      lines.forEach(line => {
+        if (y > pageHeight - 60) { doc.addPage(); y = 50; }
+        doc.text(line, margin, y);
+        y += lineHeight;
+      });
+      y += spacingAfter || 6;
+    }
+
+    function addDivider() {
+      if (y > pageHeight - 60) { doc.addPage(); y = 50; }
+      doc.setDrawColor(200);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 14;
+    }
+
+    return { doc, addText, addDivider };
+  }
+
+  function exportKnowledgeBankPdf() {
+    const w = createPdfWriter();
+    if (!w) return;
+    const botName = document.getElementById('bot-name').value || 'Your New Bot';
+    const docs = collectKnowledgeDocs();
+
+    w.addText(`Custom Knowledge Bank: ${botName}`, 18, true, 10);
+    w.addText('Built by the team — ready to upload into BoodleBox Knowledge Bank.', 11, false, 14);
+    w.addDivider();
+
+    docs.forEach((d, i) => {
+      w.addText(`Document ${i + 1}: ${d.title}`, 14, true, 4);
+      w.addText(`Type: ${d.type}`, 11, false, 8);
+      w.addText('Content:', 11, true, 2);
+      w.addText(d.content, 11, false, 10);
+      w.addText('Why This Document Is Needed:', 11, true, 2);
+      w.addText(d.reason, 11, false, 10);
+      w.addDivider();
+    });
+
+    w.doc.save(`${botName.replace(/\s+/g, '_')}_Knowledge_Bank.pdf`);
+  }
+
+  // ============================================================
+  // ARTIFACT CANVAS GENERATOR (PNG / JPG — unchanged format)
+  // ============================================================
+  function generateAndDownloadImage(type, format) {
+    const canvas = document.getElementById('artifact-canvas');
+    const ctx = canvas.getContext('2d');
+    const botName = document.getElementById('bot-name').value || "Your New Bot";
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (type === 'logo') {
+      const grad = ctx.createLinearGradient(150, 100, 650, 400);
+      grad.addColorStop(0, '#6366f1');
+      grad.addColorStop(0.5, '#06b6d4');
+      grad.addColorStop(1, '#10b981');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(400, 210, 130, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(330, 140, 140, 120, 24);
+      ctx.fill();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(370, 190, 12, 0, Math.PI * 2);
+      ctx.arc(430, 190, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(400, 115, 14, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 34px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(botName, 400, 390);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '16px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText('Daveler Innovation Center AI Sprint Edition', 400, 425);
+
+    } else if (type === 'empathy') {
+      const personaName = document.getElementById('persona-name').value || 'Your Persona';
+      const says = document.getElementById('persona-says').value || '"[Fill in a quote]"';
+      const thinks = document.getElementById('persona-thinks').value || '[Fill in a worry/question]';
+      const does = document.getElementById('persona-does').value || '[Fill in a behavior]';
+      const feels = document.getElementById('persona-feels').value || '[Fill in an emotion]';
+
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(40, 40, 720, 420);
+      ctx.beginPath();
+      ctx.moveTo(400, 40); ctx.lineTo(400, 460);
+      ctx.moveTo(40, 250); ctx.lineTo(760, 250);
+      ctx.stroke();
+
+      function wrapText(text, x, y, maxWidth, lineHeight) {
+        const words = text.split(' ');
+        let line = '';
+        let curY = y;
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + ' ';
+          if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+            ctx.fillText(line, x, curY);
+            line = words[n] + ' ';
+            curY += lineHeight;
+          } else {
+            line = testLine;
+          }
+        }
+        ctx.fillText(line, x, curY);
+      }
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#6366f1';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('🗣️ SAYS', 60, 80);
+      ctx.font = '14px sans-serif';
+      wrapText(says, 60, 105, 310, 20);
+
+      ctx.fillStyle = '#06b6d4';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('🧠 THINKS', 420, 80);
+      ctx.font = '14px sans-serif';
+      wrapText(thinks, 420, 105, 310, 20);
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('⚡ DOES', 60, 290);
+      ctx.font = '14px sans-serif';
+      wrapText(does, 60, 315, 310, 20);
+
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('❤️ FEELS', 420, 290);
+      ctx.font = '14px sans-serif';
+      wrapText(feels, 420, 315, 310, 20);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.arc(400, 250, 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#6366f1';
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      const nameLines = personaName.split(' ');
+      if (nameLines.length > 1) {
+        ctx.fillText(nameLines[0], 400, 245);
+        ctx.fillText(nameLines.slice(1).join(' '), 400, 263);
+      } else {
+        ctx.fillText(personaName, 400, 254);
+      }
+
+    } else if (type === 'architecture') {
+      const stage1 = document.getElementById('pipeline-stage1').value || 'User Input';
+      const stage2 = document.getElementById('pipeline-stage2').value || 'Your Knowledge Bank';
+      const stage3 = document.getElementById('pipeline-stage3').value || 'Bot Response';
+
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath(); ctx.roundRect(60, 180, 180, 100, 12); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(310, 180, 180, 100, 12); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(560, 180, 180, 100, 12); ctx.fill();
+
+      ctx.strokeStyle = '#6366f1';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(240, 230); ctx.lineTo(310, 230);
+      ctx.moveTo(490, 230); ctx.lineTo(560, 230);
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('1. ' + stage1, 150, 225);
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('BoodleBox Input', 150, 245);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('2. ' + stage2, 400, 225);
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillText('Your Custom Docs', 400, 245);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('3. ' + stage3, 650, 225);
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#10b981';
+      ctx.fillText('Zero-Friction Result', 650, 245);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText(botName + ' - Alpha Architecture', 400, 100);
+    }
+
+    const mime = format === 'png' ? 'image/png' : 'image/jpeg';
+    const link = document.createElement('a');
+    link.download = `${botName.replace(/\s+/g, '_')}_${type}.${format}`;
+    link.href = canvas.toDataURL(mime, 0.95);
+    link.click();
+  }
+
+  // ============================================================
+  // REPORT DATA GATHERING (used by progress snapshot + final submission)
+  // ============================================================
+  function getSelectLabel(id) {
+    const el = document.getElementById(id);
+    return el.options[el.selectedIndex].text;
+  }
+
+  function gatherReportData() {
+    const botName = document.getElementById('bot-name').value || '(unnamed bot)';
+    const studentName = document.getElementById('student-name').value || '(name not entered)';
+    return {
+      botName: botName,
+      botNameSafe: botName.replace(/\s+/g, '_'),
+      studentName: studentName,
+      studentNameSafe: studentName.replace(/\s+/g, '_'),
+      studentRole: document.getElementById('student-role').value,
+      teammatesReference: document.getElementById('teammates-reference').value || '(not listed)',
+      businessIdea: document.getElementById('new-business-idea').value || '(not yet defined)',
+      discovery: document.getElementById('reasoning-discovery').value,
+      research: document.getElementById('research-findings').value,
+      personaName: document.getElementById('persona-name').value || '(unnamed persona)',
+      says: document.getElementById('persona-says').value,
+      thinks: document.getElementById('persona-thinks').value,
+      does: document.getElementById('persona-does').value,
+      feels: document.getElementById('persona-feels').value,
+      systemPrompt: document.getElementById('system-prompt').value,
+      stage1: document.getElementById('pipeline-stage1').value || '(not defined)',
+      stage2: document.getElementById('pipeline-stage2').value || '(not defined)',
+      stage3: document.getElementById('pipeline-stage3').value || '(not defined)',
+      alphaMethodLabel: getSelectLabel('alpha-method'),
+      alphaStrategy: document.getElementById('alpha-strategy').value,
+      uxLevelLabel: getSelectLabel('ux-level-focus'),
+      uxImplementation: document.getElementById('ux-implementation').value,
+      knowledgeDocs: collectKnowledgeDocs(),
+      slides: Array.from(document.querySelectorAll('.slide-item')).map(slide => ({
+        title: slide.querySelector('.slide-title').innerText,
+        speaker: slide.querySelector('.slide-speaker-input').value || '(unassigned)',
+        content: slide.querySelector('.slide-content').value
+      })),
+      myReflection: document.getElementById('my-reflection').value
+    };
+  }
+
+  function renderSharedReportBody(w, data) {
+    w.addText(`${data.botName} — Venture Report`, 18, true, 4);
+    w.addText(`Business Idea: ${data.businessIdea}`, 12, false, 10);
+    w.addText(`Date: ${new Date().toLocaleDateString()}`, 10, false, 14);
+    w.addDivider();
+
+    w.addText('Submission Details', 14, true, 4);
+    w.addText(`Prepared by: ${data.studentName}`, 11, false, 2);
+    w.addText(`Role on Team: ${data.studentRole}`, 11, false, 2);
+    w.addText(`Teammates: ${data.teammatesReference}`, 11, false, 14);
+    w.addDivider();
+
+    w.addText('1. Market Research & Value Discovery', 14, true, 6);
+    w.addText('User Needs & Justification:', 11, true, 2);
+    w.addText(data.discovery, 11, false, 8);
+    w.addText('Research Findings:', 11, true, 2);
+    w.addText(data.research, 11, false, 8);
+    w.addText(`Persona: ${data.personaName}`, 11, true, 2);
+    w.addText(`Says: ${data.says}`, 10, false, 2);
+    w.addText(`Thinks: ${data.thinks}`, 10, false, 2);
+    w.addText(`Does: ${data.does}`, 10, false, 2);
+    w.addText(`Feels: ${data.feels}`, 10, false, 14);
+    w.addDivider();
+
+    w.addText('2. Bot Architecture & System Prompt', 14, true, 6);
+    w.addText(data.systemPrompt, 11, false, 10);
+    w.addText(`Pipeline: ${data.stage1} -> ${data.stage2} -> ${data.stage3}`, 11, false, 14);
+    w.addDivider();
+
+    w.addText(`3. Custom Knowledge Bank (${data.knowledgeDocs.length} document(s))`, 14, true, 6);
+    data.knowledgeDocs.forEach((d, i) => {
+      w.addText(`Document ${i + 1}: ${d.title} [${d.type}]`, 12, true, 2);
+      w.addText(`Why Needed: ${d.reason}`, 10, false, 10);
+    });
+    w.addDivider();
+
+    w.addText('4. Alpha Testing Plan', 14, true, 6);
+    w.addText(`Methodology: ${data.alphaMethodLabel}`, 11, false, 4);
+    w.addText(data.alphaStrategy, 11, false, 14);
+    w.addDivider();
+
+    w.addText('5. User Experience Design', 14, true, 6);
+    w.addText(`Focus: ${data.uxLevelLabel}`, 11, false, 4);
+    w.addText(data.uxImplementation, 11, false, 14);
+    w.addDivider();
+
+    w.addText('6. Six-Slide Flash Pitch Content', 14, true, 6);
+    data.slides.forEach((s, i) => {
+      w.addText(`Slide ${i + 1}: ${s.title} (Speaker: ${s.speaker})`, 12, true, 2);
+      w.addText(s.content, 11, false, 10);
+    });
+  }
+
+  // Quick, anytime snapshot of current progress — downloadable as a PDF (replaces JSON save file)
+  function downloadProgressSnapshotPdf() {
+    const w = createPdfWriter();
+    if (!w) return;
+    const data = gatherReportData();
+    w.addText('DRAFT PROGRESS SNAPSHOT — Not Yet a Final Submission', 12, true, 12);
+    renderSharedReportBody(w, data);
+    w.doc.save(`${data.studentNameSafe || 'My'}_Progress_Snapshot_${Date.now()}.pdf`);
+    flashSaveStatus('Progress snapshot PDF downloaded');
+  }
+
+  // Final, individual submission PDF — includes personal reflection
+  function generateMySubmissionPdf() {
+    const w = createPdfWriter();
+    if (!w) return;
+    const data = gatherReportData();
+
+    w.addText(`Individual Submission — ${data.botName}`, 20, true, 4);
+    w.addText(`Submitted by: ${data.studentName}`, 13, true, 2);
+    w.addText(`Role: ${data.studentRole}`, 13, false, 10);
+    w.addDivider();
+    w.addText('My Individual Contribution & Reflection', 14, true, 4);
+    w.addText(data.myReflection, 11, false, 16);
+    w.addDivider();
+    renderSharedReportBody(w, data);
+
+    w.doc.save(`${data.studentNameSafe}_${data.botNameSafe}_Individual_Submission.pdf`);
+    flashSaveStatus('Final submission PDF downloaded');
+  }
+
+  function startPresentationMode() {
+    alert("🎤 FLASH PITCH RUNNING:\n\n1. Slide 1: Hook & Bot Identity\n2. Slide 2: Problem & Quantified Data\n3. Slide 3: Solution & Behavioral UX\n4. Slide 4: JTBD Analysis\n5. Slide 5: Deployment Plan\n6. Slide 6: Reflective Delight & Memorable Close\n\n⏱ Limit: 5 Minutes Total!");
+  }
+
+  // ============================================================
+  // SAVE PROGRESS (browser-only — no JSON file ever downloaded)
+  // ============================================================
+  const SIMPLE_FIELD_IDS = [
+    'student-name', 'student-role', 'teammates-reference',
+    'new-business-idea',
+    'concept-discovery', 'reasoning-discovery', 'research-findings',
+    'persona-name', 'persona-says', 'persona-thinks', 'persona-does', 'persona-feels',
+    'bot-name', 'bot-tone', 'system-prompt',
+    'pipeline-stage1', 'pipeline-stage2', 'pipeline-stage3',
+    'alpha-method', 'alpha-strategy',
+    'ux-level-focus', 'ux-implementation',
+    'my-reflection'
+  ];
+
+  function gatherProgressState() {
+    const state = { simple: {}, knowledgeDocs: collectKnowledgeDocs(), slides: [], timeRemaining: timeInSeconds, savedAt: new Date().toISOString() };
+    SIMPLE_FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) state.simple[id] = el.value;
+    });
+    document.querySelectorAll('.slide-item').forEach(slide => {
+      state.slides.push({
+        speaker: slide.querySelector('.slide-speaker-input').value,
+        content: slide.querySelector('.slide-content').value
+      });
+    });
+    return state;
+  }
+
+  function applyProgressState(state) {
+    if (!state) return;
+    SIMPLE_FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && state.simple && state.simple[id] !== undefined) el.value = state.simple[id];
+    });
+
+    const list = document.getElementById('knowledge-doc-list');
+    list.innerHTML = '';
+    kbDocCounter = 0;
+    const docsToLoad = (state.knowledgeDocs && state.knowledgeDocs.length) ? state.knowledgeDocs : [{ title: '', type: 'FAQ / Common Questions', content: '', reason: '' }];
+    docsToLoad.forEach(d => addKnowledgeDoc(d));
+
+    const slideItems = document.querySelectorAll('.slide-item');
+    if (state.slides) {
+      slideItems.forEach((slide, i) => {
+        if (state.slides[i]) {
+          slide.querySelector('.slide-speaker-input').value = state.slides[i].speaker || '';
+          slide.querySelector('.slide-content').value = state.slides[i].content || '';
+        }
+      });
+    }
+
+    if (typeof state.timeRemaining === 'number') {
+      timeInSeconds = state.timeRemaining;
+      updateTimerDisplay();
+    }
+
+    updateReflectionLabel();
+  }
+
+  function flashSaveStatus(msg) {
+    const el = document.getElementById('save-status');
+    el.innerText = msg;
+    el.style.opacity = '1';
+    clearTimeout(window._saveStatusTimeout);
+    window._saveStatusTimeout = setTimeout(() => { el.style.opacity = '0'; }, 3000);
+  }
+
+  function saveProgressToBrowser() {
+    const state = gatherProgressState();
+    localStorage.setItem('botSprintSave_v4', JSON.stringify(state));
+    flashSaveStatus('Saved on this computer at ' + new Date().toLocaleTimeString());
+  }
+
+  function checkForBrowserSave() {
+    const saved = localStorage.getItem('botSprintSave_v4');
+    if (saved) {
+      document.getElementById('resume-banner').style.display = 'flex';
+    }
+  }
+
+  function resumeFromBrowser() {
+    const saved = localStorage.getItem('botSprintSave_v4');
+    if (saved) {
+      try {
+        applyProgressState(JSON.parse(saved));
+        flashSaveStatus('Resumed previous session');
+      } catch (e) { /* ignore corrupt save */ }
+    }
+    document.getElementById('resume-banner').style.display = 'none';
+  }
+
+  function dismissResumeBanner() {
+    document.getElementById('resume-banner').style.display = 'none';
+  }
+
+  window.addEventListener('load', function () {
+    checkForBrowserSave();
+    updateReflectionLabel();
+  });
+
+  // Debounced autosave to browser storage on any input change
+  let autosaveTimeout = null;
+  document.addEventListener('input', () => {
+    clearTimeout(autosaveTimeout);
+    autosaveTimeout = setTimeout(saveProgressToBrowser, 2500);
+  });
+</script>
+</body>
+</html>
